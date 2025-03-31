@@ -287,7 +287,7 @@ IjkMediaPlayer_stop(JNIEnv *env, jobject thiz)
 {
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
     JNI_CHECK_GOTO(mp, env, "java/lang/IllegalStateException", "mpjni: stop: null mp", LABEL_RETURN);
-
+    ffp_prestop_l(mp->ffplayer);
     ijkmp_stop(mp);
 
 LABEL_RETURN:
