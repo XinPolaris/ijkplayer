@@ -2213,6 +2213,21 @@ static int ffplay_video_thread(void *arg)
 
     for (;;) {
         ret = get_video_frame(ffp, frame);
+
+        if (ret == 0){//decode error
+            //decode frame error, set the flag
+            decode_err = 1;
+            continue;
+        }else if(ret == -1){//can't get raw frame this time
+            continue;
+        }else if (ret < -1){//other error
+            goto the_end;
+        }
+        //decode error, don't display
+        if(decode_err){
+            continue;
+        }
+
         if (ret < 0)
             goto the_end;
         if (!ret)
@@ -3569,6 +3584,12 @@ static int read_thread(void *arg)
             is->eof = 0;
         }
 
+        //来了关键帧后把frame_err和decode_err清零
+        if(pkt->flags & AV_PKT_FLAG_KEY){
+            frame_err=0;
+            decode_err=0;
+        }
+
         if (pkt->flags & AV_PKT_FLAG_DISCONTINUITY) {
             if (is->audio_stream >= 0) {
                 packet_queue_put(&is->audioq, &flush_pkt);
@@ -3593,7 +3614,12 @@ static int read_thread(void *arg)
             packet_queue_put(&is->audioq, pkt);
         } else if (pkt->stream_index == is->video_stream && pkt_in_play_range
                    && !(is->video_st && (is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC))) {
-            packet_queue_put(&is->videoq, pkt);
+            //if frame has occured error, don't enqueue
+            if(!frame_err){
+                packet_queue_put(&is->videoq, pkt);
+            }else {//release the packet when frame error during total GOP
+                av_packet_unref(pkt);
+            }
         } else if (pkt->stream_index == is->subtitle_stream && pkt_in_play_range) {
             packet_queue_put(&is->subtitleq, pkt);
         } else {
