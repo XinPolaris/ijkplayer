@@ -3618,6 +3618,7 @@ static int read_thread(void *arg)
             if(!frame_err){
                 packet_queue_put(&is->videoq, pkt);
             }else {//release the packet when frame error during total GOP
+                av_log(NULL, AV_LOG_WARNING, "frame has occured error, don't enqueue\n");
                 av_packet_unref(pkt);
             }
         } else if (pkt->stream_index == is->subtitle_stream && pkt_in_play_range) {
